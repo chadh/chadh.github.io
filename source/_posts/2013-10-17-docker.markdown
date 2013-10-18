@@ -1,0 +1,20 @@
+---
+layout: post
+title: "Docker"
+date: 2013-10-17 20:04
+comments: true
+categories: 
+---
+While at DevOps Days Atlanta a couple weeks ago, I was introduced to [Docker](https://www.docker.io), which is tool for managing [lxc linux containers](http://lxc.sf.net).  It was some really powerful features that are changing the way some people provide services and doing Infrastructure CI.
+<!--more-->
+ Ever since I saw a presentation on Solaris zones, I have wanted to play with containers in linux, but when I tried [OpenVZ](http://openvz.org), it was pretty heavy-weight -- required a custom kernel, and there was a lot of manual configuration to get it all going.  I never got to play with [Linux-Vserver](http://linux-vserver.org)), but I take it that the same thing applied there.  Those two projects have been around quite a while, and they are apparently still the right way to do "real" containerization with all the security implications that arise when allowing users privileged-level access to the containers.
+ 
+Over the last few years, the various container projects have slowly been getting parts of their kernel modifications into the mainline kernel, and with the recent finalization of user namespaces, apparently kernel support has hit critical mass.  There has been a lot of movement with lxc in the last month or two, and Docker seems to be attracting a lot of attention.
+
+Docker has two particularly neat use cases: *scriptability* and *service isolation*.  The former is pretty standard for the seemingly never ending parade of continuous integration tools that are so popular these days.  Using a `Dockerfile` (compare to `Vagrantfile`, `Puppetfile`, etc.), one can specify a sequence of directives to build, unpack, create, and customize a container.  The end result is very similar to spinning up a vagrant box, except it is much faster.  There is no booting overhead -- just unpack a filesystem, and the container is ready.  Furthermore, Docker caches each step of the process (like with a `Makefile`), so the next time you create the container, it is essentially instantaneous.
+
+The other use case for which Docker is really known is service isolation.  That is, they encourage creating a container per service.  For instance, if your application stack requires a web server, message broker, and database, create three separate containers.  While this strategy might add some processing overhead, it can greatly reduce the configuration overhead.  Frequently the different parts of a software stack have very specific requirements.  As an example, puppet and foreman are both ruby web applications.   There have been times when I wanted to (or maybe had to) use different versions of ruby for each.  That is possible to do in a single deployment, but it is relatively complictated to set up.  With containers, puppet would run in a container, foreman would run in another, and they each could have their own ruby stack.  There is another advantage if you are running applications that are picky about what port on which they listen.  Docker can map the container port to a different host port.
+
+I think what really draws me to those particular features is that they address two of my biggest time sinks.  I spend **a lot** of time waiting for VMs to spin up and then software to install when testing provisioning scripts.  Spinning up a container is really fast; the timings I have seen online are sub-second after the first time.  I also spend far too long trying to integrate the new hotness into my environment.  With containers, if the software author wrote his installation process for ubuntu 12.04, I can just use a 12.04 container.  If the developer only supports Red Hat, I can do that too.
+
+Wow, this was really long, and that was just one part of the discussion.  The obvious use case for this in my environment is the example I used.  I plan to refactor the puppet master deployment to use Docker for managing puppet master, puppet db, and foreman containers.  Next time I'll talk about [coreos](http://coreos.com) as the base for running Docker.
