@@ -4,7 +4,7 @@
   <title><![CDATA[My Blog]]></title>
   <link href="http://chadh.github.io/atom.xml" rel="self"/>
   <link href="http://chadh.github.io/"/>
-  <updated>2013-10-17T20:01:53-04:00</updated>
+  <updated>2013-10-17T21:58:52-04:00</updated>
   <id>http://chadh.github.io/</id>
   <author>
     <name><![CDATA[Chad Huneycutt]]></name>
@@ -12,6 +12,30 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Docker]]></title>
+    <link href="http://chadh.github.io/blog/2013/10/17/docker/"/>
+    <updated>2013-10-17T20:04:00-04:00</updated>
+    <id>http://chadh.github.io/blog/2013/10/17/docker</id>
+    <content type="html"><![CDATA[<p>While at DevOps Days Atlanta a couple weeks ago, I was introduced to <a href="https://www.docker.io">Docker</a>, which is tool for managing <a href="http://lxc.sf.net">lxc linux containers</a>.  It was some really powerful features that are changing the way some people provide services and doing Infrastructure CI.</p>
+
+<!--more-->
+
+
+<p> Ever since I saw a presentation on Solaris zones, I have wanted to play with containers in linux, but when I tried <a href="http://openvz.org">OpenVZ</a>, it was pretty heavy-weight &mdash; required a custom kernel, and there was a lot of manual configuration to get it all going.  I never got to play with <a href="http://linux-vserver.org">Linux-Vserver</a>), but I take it that the same thing applied there.  Those two projects have been around quite a while, and they are apparently still the right way to do &ldquo;real&rdquo; containerization with all the security implications that arise when allowing users privileged-level access to the containers.</p>
+
+<p>Over the last few years, the various container projects have slowly been getting parts of their kernel modifications into the mainline kernel, and with the recent finalization of user namespaces, apparently kernel support has hit critical mass.  There has been a lot of movement with lxc in the last month or two, and Docker seems to be attracting a lot of attention.</p>
+
+<p>Docker has two particularly neat use cases: <em>scriptability</em> and <em>service isolation</em>.  The former is pretty standard for the seemingly never ending parade of continuous integration tools that are so popular these days.  Using a <code>Dockerfile</code> (compare to <code>Vagrantfile</code>, <code>Puppetfile</code>, etc.), one can specify a sequence of directives to build, unpack, create, and customize a container.  The end result is very similar to spinning up a vagrant box, except it is much faster.  There is no booting overhead &mdash; just unpack a filesystem, and the container is ready.  Furthermore, Docker caches each step of the process (like with a <code>Makefile</code>), so the next time you create the container, it is essentially instantaneous.</p>
+
+<p>The other use case for which Docker is really known is service isolation.  That is, they encourage creating a container per service.  For instance, if your application stack requires a web server, message broker, and database, create three separate containers.  While this strategy might add some processing overhead, it can greatly reduce the configuration overhead.  Frequently the different parts of a software stack have very specific requirements.  As an example, puppet and foreman are both ruby web applications.   There have been times when I wanted to (or maybe had to) use different versions of ruby for each.  That is possible to do in a single deployment, but it is relatively complictated to set up.  With containers, puppet would run in a container, foreman would run in another, and they each could have their own ruby stack.  There is another advantage if you are running applications that are picky about what port on which they listen.  Docker can map the container port to a different host port.</p>
+
+<p>I think what really draws me to those particular features is that they address two of my biggest time sinks.  I spend <strong>a lot</strong> of time waiting for VMs to spin up and then software to install when testing provisioning scripts.  Spinning up a container is really fast; the timings I have seen online are sub-second after the first time.  I also spend far too long trying to integrate the new hotness into my environment.  With containers, if the software author wrote his installation process for ubuntu 12.04, I can just use a 12.04 container.  If the developer only supports Red Hat, I can do that too.</p>
+
+<p>Wow, this was really long, and that was just one part of the discussion.  The obvious use case for this in my environment is the example I used.  I plan to refactor the puppet master deployment to use Docker for managing puppet master, puppet db, and foreman containers.  Next time I&rsquo;ll talk about <a href="http://coreos.com">coreos</a> as the base for running Docker.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[First Post]]></title>
