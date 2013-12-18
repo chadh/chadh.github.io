@@ -96,15 +96,17 @@
 <!-- more -->
 
 
-<p>Our current workflow ideally goes something like this:  <br/>
-1. Decide on a new feature
-2. Create a new environment</p>
-
-<pre><code>1. Run the newenv.sh script, providing the base branch and the name of the new environment
-2. Create feature branches for each repo that will be affected by the feature
-</code></pre>
+<p>Our current workflow ideally goes something like this:</p>
 
 <ol>
+<li>Decide on a new feature</li>
+<li>Create a new environment
+
+<ol>
+<li>Run the newenv.sh script, providing the base branch and the name of the new environment</li>
+<li>Create feature branches for each repo that will be affected by the feature</li>
+</ol>
+</li>
 <li>Make changes</li>
 <li>Test changes by running puppet on a set of hosts in the new environment</li>
 <li>Repeat the previous two steps, committing as appropriate, until done</li>
