@@ -1,0 +1,60 @@
+---
+layout: post
+title: "r10k ftw?"
+date: 2013-12-17 19:49
+comments: true
+categories: 
+---
+
+Last time I talked about [how we have our puppet environments set up]({% post_url 2013-12-12-puppet-workflow-take-1 %}), but I did not mention the tools we use to maintain it.  In this post, I'll cover how we currently do it, and the changes I am considering to make the process a little easier.
+<!-- more -->
+Our current workflow ideally goes something like this:  
+1. Decide on a new feature
+2. Create a new environment
+    1. Run the newenv.sh script, providing the base branch and the name of the new environment
+    2. Create feature branches for each repo that will be affected by the feature
+3. Make changes
+4. Test changes by running puppet on a set of hosts in the new environment
+5. Repeat the previous two steps, committing as appropriate, until done
+6. Commit one final time
+7. Merge changes into base branch
+8. Push changes to central repo
+9. Pull changes down to production environment
+10. Carefully, painstakingly merge feature into other production branches
+
+That is pretty much the standard development workflow, so I won't say anything about the overall process.  The relevant steps for this discussion are Step 2 and the final step, which hide a lot of complexity.
+
+**newenv.sh, puppet-librarian, and merging**  
+`newenv.sh` is a script we cooked up to automate the creation of an environment.  As I mentioned in the last post, our environments are composed of checkouts from several git repos, as well as downloads from the PuppetLabs Module Forge.  The script performs these steps:  
+1. Clone the environment repo using the specified branch and name the checkout appropriately
+2. Run librarian-puppet to fetch all the modules
+3. Go behind lp and clean up by checking out the requested branches explicitly
+4. Clone the hieradata for this base branch and graft it into the environment in the right place
+
+This brings us to [librarian-puppet](https://github.com/rodjek/librarian-puppet).  This is a tool that uses a description called a `Puppetfile` that describes a set of modules, where to get them, which versions to get, etc. and then manages them in your environment.  The program has the ability to do the initial checkout/download as well as keep them up to date, and remove them when they are no longer needed.  Unfortunatley, we could never really get it to work exactly right.  Specifically, git checkouts seemed to leave the code on an anonymous branch, rather than the requested branch.  I had to add some code to the newenv.sh script that would make sure the repos were all checked out on the right branch.  We were also never entirely sure how safe it was to develop in a module that was managed by librarian-puppet.
+
+The other pain point is merging from one production environment to the others.  I will not discuss that in this post, but I think it really boils down to just general revision control pain.  Merging is necessarily complicated when it isn't easy.
+
+**r10k**  
+So what can we do about librarian-puppet?  First I have to acknowledge that we may be doing something wrong.  I realize a lot of people have no problems with it, and if we could get the checkouts to work, could safely update without losing any changes, and there was active development, it would probably be fine for us.  But there is another option called [r10k](https://github.com/adrienthebo/r10k), developed by the folks at puppetlabs that I want to try out.  Rather than just managing modules, r10k manages all of the environments (as well as [some other features](http://somethingsinistral.net/blog/rethinking-puppet-deployment/).  This makes it rather opinionated about the development workflow.  It facilitates the process detailed [here](https://puppetlabs.com/blog/git-workflow-and-puppet-environments), which does not exactly match the way we do things.  Here is what it expects the puppet directory to look like:
+
+```
+/etc/puppet
+|-- data
+|   |-- dev
+|   |-- feature1
+|   |-- feature2
+|   `-- master
+`-- environments
+    |-- dev
+    |-- feature1
+    |-- feature2
+    `-- master
+```
+
+Basically r10k does two things: it checks out all branches of repos that you tell it about, and, like librarian-puppet, it reads a Puppetfile in the checked out repos and fetches the modules.  Because of the way it currently works, if you want r10k to manage the hieradata from a separate repo, it has to manage it outside of the environment (as above).  I feel pretty strongly that having the hiera data inside the environment is the *right* way, simply because then all environment-specific data is co-located.  Hiera already "hides" the data (vs. it being right in the code), and there is no reason to relocate it completely out of the environment.
+
+r10k also does some optimizations on how git repos are managed to make repo operations fast, which are explained at the links above.
+
+**Application**  
+So how do we improve our workflow?  I started this post with a clear answer to that question, but writing this has helped me see some problems with what I was thinking, some solutions to those problems and others, and now I will have to try a few things before I am sure what is going to work.  Stay tuned.

@@ -1,0 +1,43 @@
+---
+layout: post
+title: "CoreOS"
+date: 2013-10-18 17:46
+comments: true
+categories: 
+---
+I wrote about [Docker]({% post_url 2013-10-17-docker %}) yesterday and teased that today I would discuss [CoreOS](http://coreos.com).  I came across CoreOS indirectly through a tweet about Kelsey Hightower's [confd](https://github.com/kelseyhightower/confd).  I will not go into confd, right now (have not really looked into it anyway), but it works with [etcd](https://github.com/coreos/etcd), which is one of features of CoreOS.
+
+So what is CoreOS?
+
+As its name suggests, it is a minimal OS.  It is based on the linux kernel and features [systemd](http://www.freedesktop.org/wiki/Software/systemd/), etcd, and docker.  It is essentially a hypervisor for containers.  There is no package manager as there is no software to manage.  Upgrades to the OS occur as atomic system updates, requiring a reboot to take effect.  I expounded at length about Docker's notion of containerized services, and CoreOS takes that to its logical conclusion: nothing runs directly on the host OS.
+
+Whether or not CoreOS or something like it is the future of system provisioning, it provides a very easy to use platform for taking Docker for a spin.  I was able to easily bring up a vagrant box with CoreOS and start playing with Docker.  With a little more effort, Docker also works with Ubuntu 12.04 or later (with updated 3.8 kernel), but why bother with all the overhead?
+
+Here's a session to show an Ubuntu container running inside CoreOS running inside Vagrant:
+
+{% codeblock Vagrant/CoreOS Bash Session %}
+ch145@strangepork:~/coreos-vagrant (master)$ grep DISTRIB /etc/lsb-release 
+DISTRIB_ID=Ubuntu
+DISTRIB_RELEASE=12.04
+DISTRIB_CODENAME=precise
+DISTRIB_DESCRIPTION="Ubuntu 12.04.3 LTS"
+ch145@strangepork:~/coreos-vagrant (master)$ vagrant ssh
+Last login: Fri Oct 18 23:06:44 UTC 2013 from 10.0.2.2 on ssh
+   ______                ____  _____
+  / ____/___  ________  / __ \/ ___/
+ / /   / __ \/ ___/ _ \/ / / /\__ \
+/ /___/ /_/ / /  /  __/ /_/ /___/ /
+\____/\____/_/   \___/\____//____/
+core@localhost ~ $ 
+
+core@localhost ~ $ grep DISTRIB /etc/lsb-release 
+DISTRIB_ID=CoreOS
+DISTRIB_RELEASE=106.0.0
+DISTRIB_CODENAME="West Coast Style"
+DISTRIB_DESCRIPTION="CoreOS 106.0.0 (Official Build) dev-channel amd64-generic test"
+core@localhost ~ $ docker run -t -i ubuntu grep DISTRIB /etc/lsb-release
+DISTRIB_ID=Ubuntu
+DISTRIB_RELEASE=12.04
+DISTRIB_CODENAME=precise
+DISTRIB_DESCRIPTION="Ubuntu 12.04 LTS"
+{% endcodeblock %}
