@@ -8,7 +8,8 @@ categories:
 
 Last time I talked about [how we have our puppet environments set up]({% post_url 2013-12-12-puppet-workflow-take-1 %}), but I did not mention the tools we use to maintain it.  In this post, I'll cover how we currently do it, and the changes I am considering to make the process a little easier.
 <!-- more -->
-Our current workflow ideally goes something like this:  
+Our current workflow ideally goes something like this:
+
 1. Decide on a new feature
 2. Create a new environment
     1. Run the newenv.sh script, providing the base branch and the name of the new environment
@@ -25,7 +26,8 @@ Our current workflow ideally goes something like this:
 That is pretty much the standard development workflow, so I won't say anything about the overall process.  The relevant steps for this discussion are Step 2 and the final step, which hide a lot of complexity.
 
 **newenv.sh, puppet-librarian, and merging**  
-`newenv.sh` is a script we cooked up to automate the creation of an environment.  As I mentioned in the last post, our environments are composed of checkouts from several git repos, as well as downloads from the PuppetLabs Module Forge.  The script performs these steps:  
+`newenv.sh` is a script we cooked up to automate the creation of an environment.  As I mentioned in the last post, our environments are composed of checkouts from several git repos, as well as downloads from the PuppetLabs Module Forge.  The script performs these steps:
+
 1. Clone the environment repo using the specified branch and name the checkout appropriately
 2. Run librarian-puppet to fetch all the modules
 3. Go behind lp and clean up by checking out the requested branches explicitly
