@@ -4,7 +4,7 @@
   <title><![CDATA[My Blog]]></title>
   <link href="http://chadh.github.io/atom.xml" rel="self"/>
   <link href="http://chadh.github.io/"/>
-  <updated>2013-12-18T13:13:57-05:00</updated>
+  <updated>2013-12-18T13:15:24-05:00</updated>
   <id>http://chadh.github.io/</id>
   <author>
     <name><![CDATA[Chad Huneycutt]]></name>
@@ -27,9 +27,13 @@
 
 <ol>
 <li>Decide on a new feature</li>
-<li>Create a new environment</li>
-<li> Run the newenv.sh script, providing the base branch and the name of the new environment</li>
-<li> Create feature branches for each repo that will be affected by the feature</li>
+<li>Create a new environment
+
+<ol>
+<li>Run the newenv.sh script, providing the base branch and the name of the new environment</li>
+<li>Create feature branches for each repo that will be affected by the feature</li>
+</ol>
+</li>
 <li>Make changes</li>
 <li>Test changes by running puppet on a set of hosts in the new environment</li>
 <li>Repeat the previous two steps, committing as appropriate, until done</li>
@@ -44,11 +48,15 @@
 <p>That is pretty much the standard development workflow, so I won&rsquo;t say anything about the overall process.  The relevant steps for this discussion are Step 2 and the final step, which hide a lot of complexity.</p>
 
 <p><strong>newenv.sh, puppet-librarian, and merging</strong><br/>
-<code>newenv.sh</code> is a script we cooked up to automate the creation of an environment.  As I mentioned in the last post, our environments are composed of checkouts from several git repos, as well as downloads from the PuppetLabs Module Forge.  The script performs these steps:<br/>
-1. Clone the environment repo using the specified branch and name the checkout appropriately
-2. Run librarian-puppet to fetch all the modules
-3. Go behind lp and clean up by checking out the requested branches explicitly
-4. Clone the hieradata for this base branch and graft it into the environment in the right place</p>
+<code>newenv.sh</code> is a script we cooked up to automate the creation of an environment.  As I mentioned in the last post, our environments are composed of checkouts from several git repos, as well as downloads from the PuppetLabs Module Forge.  The script performs these steps:</p>
+
+<ol>
+<li>Clone the environment repo using the specified branch and name the checkout appropriately</li>
+<li>Run librarian-puppet to fetch all the modules</li>
+<li>Go behind lp and clean up by checking out the requested branches explicitly</li>
+<li>Clone the hieradata for this base branch and graft it into the environment in the right place</li>
+</ol>
+
 
 <p>This brings us to <a href="https://github.com/rodjek/librarian-puppet">librarian-puppet</a>.  This is a tool that uses a description called a <code>Puppetfile</code> that describes a set of modules, where to get them, which versions to get, etc. and then manages them in your environment.  The program has the ability to do the initial checkout/download as well as keep them up to date, and remove them when they are no longer needed.  Unfortunatley, we could never really get it to work exactly right.  Specifically, git checkouts seemed to leave the code on an anonymous branch, rather than the requested branch.  I had to add some code to the newenv.sh script that would make sure the repos were all checked out on the right branch.  We were also never entirely sure how safe it was to develop in a module that was managed by librarian-puppet.</p>
 
