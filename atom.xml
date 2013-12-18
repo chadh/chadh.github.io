@@ -4,7 +4,7 @@
   <title><![CDATA[My Blog]]></title>
   <link href="http://chadh.github.io/atom.xml" rel="self"/>
   <link href="http://chadh.github.io/"/>
-  <updated>2013-10-18T19:31:33-04:00</updated>
+  <updated>2013-12-18T13:00:06-05:00</updated>
   <id>http://chadh.github.io/</id>
   <author>
     <name><![CDATA[Chad Huneycutt]]></name>
@@ -12,6 +12,128 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[r10k ftw?]]></title>
+    <link href="http://chadh.github.io/blog/2013/12/17/r10k-ftw/"/>
+    <updated>2013-12-17T19:49:00-05:00</updated>
+    <id>http://chadh.github.io/blog/2013/12/17/r10k-ftw</id>
+    <content type="html"><![CDATA[<p>Last time I talked about <a href="http://chadh.github.io/blog/2013/12/12/puppet-workflow-take-1/">how we have our puppet environments set up</a>, but I did not mention the tools we use to maintain it.  In this post, I&rsquo;ll cover how we currently do it, and the changes I am considering to make the process a little easier.</p>
+
+<!-- more -->
+
+
+<p>Our current workflow ideally goes something like this:<br/>
+1. Decide on a new feature
+2. Create a new environment</p>
+
+<pre><code>1. Run the newenv.sh script, providing the base branch and the name of the new environment
+2. Create feature branches for each repo that will be affected by the feature
+</code></pre>
+
+<ol>
+<li>Make changes</li>
+<li>Test changes by running puppet on a set of hosts in the new environment</li>
+<li>Repeat the previous two steps, committing as appropriate, until done</li>
+<li>Commit one final time</li>
+<li>Merge changes into base branch</li>
+<li>Push changes to central repo</li>
+<li>Pull changes down to production environment</li>
+<li>Carefully, painstakingly merge feature into other production branches</li>
+</ol>
+
+
+<p>That is pretty much the standard development workflow, so I won&rsquo;t say anything about the overall process.  The relevant steps for this discussion are Step 2 and the final step, which hide a lot of complexity.</p>
+
+<p><strong>newenv.sh, puppet-librarian, and merging</strong><br/>
+<code>newenv.sh</code> is a script we cooked up to automate the creation of an environment.  As I mentioned in the last post, our environments are composed of checkouts from several git repos, as well as downloads from the PuppetLabs Module Forge.  The script performs these steps:<br/>
+1. Clone the environment repo using the specified branch and name the checkout appropriately
+2. Run librarian-puppet to fetch all the modules
+3. Go behind lp and clean up by checking out the requested branches explicitly
+4. Clone the hieradata for this base branch and graft it into the environment in the right place</p>
+
+<p>This brings us to <a href="https://github.com/rodjek/librarian-puppet">librarian-puppet</a>.  This is a tool that uses a description called a <code>Puppetfile</code> that describes a set of modules, where to get them, which versions to get, etc. and then manages them in your environment.  The program has the ability to do the initial checkout/download as well as keep them up to date, and remove them when they are no longer needed.  Unfortunatley, we could never really get it to work exactly right.  Specifically, git checkouts seemed to leave the code on an anonymous branch, rather than the requested branch.  I had to add some code to the newenv.sh script that would make sure the repos were all checked out on the right branch.  We were also never entirely sure how safe it was to develop in a module that was managed by librarian-puppet.</p>
+
+<p>The other pain point is merging from one production environment to the others.  I will not discuss that in this post, but I think it really boils down to just general revision control pain.  Merging is necessarily complicated when it isn&rsquo;t easy.</p>
+
+<p><strong>r10k</strong><br/>
+So what can we do about librarian-puppet?  First I have to acknowledge that we may be doing something wrong.  I realize a lot of people have no problems with it, and if we could get the checkouts to work, could safely update without losing any changes, and there was active development, it would probably be fine for us.  But there is another option called <a href="https://github.com/adrienthebo/r10k">r10k</a>, developed by the folks at puppetlabs that I want to try out.  Rather than just managing modules, r10k manages all of the environments (as well as <a href="http://somethingsinistral.net/blog/rethinking-puppet-deployment/">some other features</a>.  This makes it rather opinionated about the development workflow.  It facilitates the process detailed <a href="https://puppetlabs.com/blog/git-workflow-and-puppet-environments">here</a>, which does not exactly match the way we do things.  Here is what it expects the puppet directory to look like:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/etc/puppet
+</span><span class='line'>|-- data
+</span><span class='line'>|   |-- dev
+</span><span class='line'>|   |-- feature1
+</span><span class='line'>|   |-- feature2
+</span><span class='line'>|   `-- master
+</span><span class='line'>`-- environments
+</span><span class='line'>    |-- dev
+</span><span class='line'>    |-- feature1
+</span><span class='line'>    |-- feature2
+</span><span class='line'>    `-- master</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Basically r10k does two things: it checks out all branches of repos that you tell it about, and, like librarian-puppet, it reads a Puppetfile in the checked out repos and fetches the modules.  Because of the way it currently works, if you want r10k to manage the hieradata from a separate repo, it has to manage it outside of the environment (as above).  I feel pretty strongly that having the hiera data inside the environment is the <em>right</em> way, simply because then all environment-specific data is co-located.  Hiera already &ldquo;hides&rdquo; the data (vs. it being right in the code), and there is no reason to relocate it completely out of the environment.</p>
+
+<p>r10k also does some optimizations on how git repos are managed to make repo operations fast, which are explained at the links above.</p>
+
+<p><strong>Application</strong><br/>
+So how do we improve our workflow?  I started this post with a clear answer to that question, but writing this has helped me see some problems with what I was thinking, some solutions to those problems and others, and now I will have to try a few things before I am sure what is going to work.  Stay tuned.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[puppet workflow take 1]]></title>
+    <link href="http://chadh.github.io/blog/2013/12/12/puppet-workflow-take-1/"/>
+    <updated>2013-12-12T01:13:00-05:00</updated>
+    <id>http://chadh.github.io/blog/2013/12/12/puppet-workflow-take-1</id>
+    <content type="html"><![CDATA[<p>When it comes to puppet development workflow, my colleagues and I have tried various solutions, and we are getting pretty close to something that we believe works for us.  In our environment, we have three groups with slightly different requirements.  The infrastructure group is deploying to file servers, dns servers, etc., and as one might expect, changes need to be carefully vetted before being pushed out.  The research support group is the testing ground.  They are constantly deploying new hardware, trying new versions of the OS and software, and stability frequently is less important than flexibility.  The instruction support group is a hybrid of the other two.  During the semester, there needs to be very few changes in order to ensure consistency in the labs.  But during the breaks, rapid development to update the repos and pull in new fixes, as well as to support any new hardware being deployed is the rule.  The last complication is that none of these environments is necessarily a strict subset of the others.  In some cases, infrastructure and research have a very devops-y feel, with research doing development, and then infrastructure hardening and preparing the changes for production. There are also components and implementations that only one or two of the groups will use.  It is the kind of code management that git is good at, if you use it properly, and we are still working on that.</p>
+
+<p>We use git and dynamic environments in puppet.  It is a relatively common setup, except for the way we deal with hiera, although I do not believe there is a standard for that yet.  Our directories look roughly like this:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/etc/puppet
+</span><span class='line'>├── environments
+</span><span class='line'>│   ├── [environment]
+</span><span class='line'>│   │   ├── hieradata
+</span><span class='line'>│   │   │   ├── modules
+</span><span class='line'>│   │   │   ├── nodes
+</span><span class='line'>│   │   │   └── roles
+</span><span class='line'>│   │   └── modules
+</span><span class='line'>│   │       ├── apache
+</span><span class='line'>│   │       ├── apachepassenger
+</span><span class='line'>│   │       ├── autofs
+</span><span class='line'>│   │       ├── ccbp
+</span><span class='line'>|   |       ...            </span></code></pre></td></tr></table></div></figure>
+
+
+<p>The tree is managed with multiple git repos.  There is one for each environment (subdirectory of <code>environments</code>).  Each module either comes from its own repo or the forge.  Initially we had the entire hieradata subdirectory in a repo, but we found that our usage made it realy hard to maintain it that way.  Currently, <code>hieradata/nodes/</code> and <code>hieradata/roles</code> is part of the environment repo, and <code>hieradata/modules</code> is in a separate repo.  I will mention more about how we do hiera here later, but the latter subdirectory contains <strong>site-specific</strong> in-module hieradata overrides, and we found that it made more sense to split that data out so we could easily keep updates in sync with the module.  We manage all of this using a script that clones the environment, grafts in the hieradata, and then runs librarian-puppet, which checks out all the modules either from a git repo or the forge.</p>
+
+<p>I will just point out a couple of things: most of the repos are shared among our three groups, with each of us managing our own branch.  The rest of the repos (e.g., the environment repo) are completely different repos.  We could have used branches in a single repo, but we do not think that the code bases will stay similar enough to warrant that.  The second point is that our hiera data is <em>in the environment</em>; other folks in the community separate the hiera data directories completely from the environment.  So rather than <code>/etc/puppet/environments/myenvironment/hieradata</code>, they would have `/etc/puppet/hieradata/myenvironment/&lsquo;.  Six one way, one half dozen the other &hellip; or is it?</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[CoreOS]]></title>

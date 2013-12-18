@@ -1,0 +1,310 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>r10k ftw? - My Blog</title>
+  <meta name="author" content="Chad Huneycutt">
+
+  
+  <meta name="description" content="Last time I talked about how we have our puppet environments set up, but I did not mention the tools we use to maintain it. In this post, I&rsquo;ll &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chadh.github.io/blog/2013/12/17/r10k-ftw">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="My Blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">My Blog</a></h1>
+  
+    <h2>Musings on Sysadmin, DevOps, etc.</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chadh.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">R10k Ftw?</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-12-17T19:49:00-05:00" pubdate data-updated="true">Dec 17<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Last time I talked about <a href="/blog/2013/12/12/puppet-workflow-take-1/">how we have our puppet environments set up</a>, but I did not mention the tools we use to maintain it.  In this post, I&rsquo;ll cover how we currently do it, and the changes I am considering to make the process a little easier.</p>
+
+<!-- more -->
+
+
+<p>Our current workflow ideally goes something like this:<br/>
+1. Decide on a new feature
+2. Create a new environment</p>
+
+<pre><code>1. Run the newenv.sh script, providing the base branch and the name of the new environment
+2. Create feature branches for each repo that will be affected by the feature
+</code></pre>
+
+<ol>
+<li>Make changes</li>
+<li>Test changes by running puppet on a set of hosts in the new environment</li>
+<li>Repeat the previous two steps, committing as appropriate, until done</li>
+<li>Commit one final time</li>
+<li>Merge changes into base branch</li>
+<li>Push changes to central repo</li>
+<li>Pull changes down to production environment</li>
+<li>Carefully, painstakingly merge feature into other production branches</li>
+</ol>
+
+
+<p>That is pretty much the standard development workflow, so I won&rsquo;t say anything about the overall process.  The relevant steps for this discussion are Step 2 and the final step, which hide a lot of complexity.</p>
+
+<p><strong>newenv.sh, puppet-librarian, and merging</strong><br/>
+<code>newenv.sh</code> is a script we cooked up to automate the creation of an environment.  As I mentioned in the last post, our environments are composed of checkouts from several git repos, as well as downloads from the PuppetLabs Module Forge.  The script performs these steps:<br/>
+1. Clone the environment repo using the specified branch and name the checkout appropriately
+2. Run librarian-puppet to fetch all the modules
+3. Go behind lp and clean up by checking out the requested branches explicitly
+4. Clone the hieradata for this base branch and graft it into the environment in the right place</p>
+
+<p>This brings us to <a href="https://github.com/rodjek/librarian-puppet">librarian-puppet</a>.  This is a tool that uses a description called a <code>Puppetfile</code> that describes a set of modules, where to get them, which versions to get, etc. and then manages them in your environment.  The program has the ability to do the initial checkout/download as well as keep them up to date, and remove them when they are no longer needed.  Unfortunatley, we could never really get it to work exactly right.  Specifically, git checkouts seemed to leave the code on an anonymous branch, rather than the requested branch.  I had to add some code to the newenv.sh script that would make sure the repos were all checked out on the right branch.  We were also never entirely sure how safe it was to develop in a module that was managed by librarian-puppet.</p>
+
+<p>The other pain point is merging from one production environment to the others.  I will not discuss that in this post, but I think it really boils down to just general revision control pain.  Merging is necessarily complicated when it isn&rsquo;t easy.</p>
+
+<p><strong>r10k</strong><br/>
+So what can we do about librarian-puppet?  First I have to acknowledge that we may be doing something wrong.  I realize a lot of people have no problems with it, and if we could get the checkouts to work, could safely update without losing any changes, and there was active development, it would probably be fine for us.  But there is another option called <a href="https://github.com/adrienthebo/r10k">r10k</a>, developed by the folks at puppetlabs that I want to try out.  Rather than just managing modules, r10k manages all of the environments (as well as <a href="http://somethingsinistral.net/blog/rethinking-puppet-deployment/">some other features</a>.  This makes it rather opinionated about the development workflow.  It facilitates the process detailed <a href="https://puppetlabs.com/blog/git-workflow-and-puppet-environments">here</a>, which does not exactly match the way we do things.  Here is what it expects the puppet directory to look like:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/etc/puppet
+</span><span class='line'>|-- data
+</span><span class='line'>|   |-- dev
+</span><span class='line'>|   |-- feature1
+</span><span class='line'>|   |-- feature2
+</span><span class='line'>|   `-- master
+</span><span class='line'>`-- environments
+</span><span class='line'>    |-- dev
+</span><span class='line'>    |-- feature1
+</span><span class='line'>    |-- feature2
+</span><span class='line'>    `-- master</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Basically r10k does two things: it checks out all branches of repos that you tell it about, and, like librarian-puppet, it reads a Puppetfile in the checked out repos and fetches the modules.  Because of the way it currently works, if you want r10k to manage the hieradata from a separate repo, it has to manage it outside of the environment (as above).  I feel pretty strongly that having the hiera data inside the environment is the <em>right</em> way, simply because then all environment-specific data is co-located.  Hiera already &ldquo;hides&rdquo; the data (vs. it being right in the code), and there is no reason to relocate it completely out of the environment.</p>
+
+<p>r10k also does some optimizations on how git repos are managed to make repo operations fast, which are explained at the links above.</p>
+
+<p><strong>Application</strong><br/>
+So how do we improve our workflow?  I started this post with a clear answer to that question, but writing this has helped me see some problems with what I was thinking, some solutions to those problems and others, and now I will have to try a few things before I am sure what is going to work.  Stay tuned.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Chad Huneycutt</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-12-17T19:49:00-05:00" pubdate data-updated="true">Dec 17<span>th</span>, 2013</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chadh.github.io/blog/2013/12/17/r10k-ftw/" data-via="" data-counturl="http://chadh.github.io/blog/2013/12/17/r10k-ftw/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/12/12/puppet-workflow-take-1/" title="Previous Post: puppet workflow take 1">&laquo; puppet workflow take 1</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/12/17/r10k-ftw/">R10k Ftw?</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/12/12/puppet-workflow-take-1/">Puppet Workflow Take 1</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/10/18/coreos/">CoreOS</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/10/17/docker/">Docker</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/10/17/first-post/">First Post</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chadh">@chadh</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chadh',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Chad Huneycutt -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
