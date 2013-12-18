@@ -4,7 +4,7 @@
   <title><![CDATA[My Blog]]></title>
   <link href="http://chadh.github.io/atom.xml" rel="self"/>
   <link href="http://chadh.github.io/"/>
-  <updated>2013-12-18T13:22:30-05:00</updated>
+  <updated>2013-12-18T13:26:40-05:00</updated>
   <id>http://chadh.github.io/</id>
   <author>
     <name><![CDATA[Chad Huneycutt]]></name>
@@ -103,7 +103,12 @@ So how do we improve our workflow?  I started this post with a clear answer to t
     <link href="http://chadh.github.io/blog/2013/12/12/puppet-workflow-take-1/"/>
     <updated>2013-12-12T01:13:00-05:00</updated>
     <id>http://chadh.github.io/blog/2013/12/12/puppet-workflow-take-1</id>
-    <content type="html"><![CDATA[<p>When it comes to puppet development workflow, my colleagues and I have tried various solutions, and we are getting pretty close to something that we believe works for us.  In our environment, we have three groups with slightly different requirements.  The infrastructure group is deploying to file servers, dns servers, etc., and as one might expect, changes need to be carefully vetted before being pushed out.  The research support group is the testing ground.  They are constantly deploying new hardware, trying new versions of the OS and software, and stability frequently is less important than flexibility.  The instruction support group is a hybrid of the other two.  During the semester, there needs to be very few changes in order to ensure consistency in the labs.  But during the breaks, rapid development to update the repos and pull in new fixes, as well as to support any new hardware being deployed is the rule.  The last complication is that none of these environments is necessarily a strict subset of the others.  In some cases, infrastructure and research have a very devops-y feel, with research doing development, and then infrastructure hardening and preparing the changes for production. There are also components and implementations that only one or two of the groups will use.  It is the kind of code management that git is good at, if you use it properly, and we are still working on that.</p>
+    <content type="html"><![CDATA[<p>When it comes to puppet development workflow, my colleagues and I have tried various solutions, and we are getting pretty close to something that we believe works for us.</p>
+
+<!-- more -->
+
+
+<p>In our environment, we have three groups with slightly different requirements.  The infrastructure group is deploying to file servers, dns servers, etc., and as one might expect, changes need to be carefully vetted before being pushed out.  The research support group is the testing ground.  They are constantly deploying new hardware, trying new versions of the OS and software, and stability frequently is less important than flexibility.  The instruction support group is a hybrid of the other two.  During the semester, there needs to be very few changes in order to ensure consistency in the labs.  But during the breaks, rapid development to update the repos and pull in new fixes, as well as to support any new hardware being deployed is the rule.  The last complication is that none of these environments is necessarily a strict subset of the others.  In some cases, infrastructure and research have a very devops-y feel, with research doing development, and then infrastructure hardening and preparing the changes for production. There are also components and implementations that only one or two of the groups will use.  It is the kind of code management that git is good at, if you use it properly, and we are still working on that.</p>
 
 <p>We use git and dynamic environments in puppet.  It is a relatively common setup, except for the way we deal with hiera, although I do not believe there is a standard for that yet.  Our directories look roughly like this:</p>
 
