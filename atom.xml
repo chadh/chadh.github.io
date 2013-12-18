@@ -4,7 +4,7 @@
   <title><![CDATA[My Blog]]></title>
   <link href="http://chadh.github.io/atom.xml" rel="self"/>
   <link href="http://chadh.github.io/"/>
-  <updated>2013-12-18T13:09:50-05:00</updated>
+  <updated>2013-12-18T13:13:57-05:00</updated>
   <id>http://chadh.github.io/</id>
   <author>
     <name><![CDATA[Chad Huneycutt]]></name>
@@ -27,13 +27,9 @@
 
 <ol>
 <li>Decide on a new feature</li>
-<li>Create a new environment
-
-<ol>
-<li>Run the newenv.sh script, providing the base branch and the name of the new environment</li>
-<li>Create feature branches for each repo that will be affected by the feature</li>
-</ol>
-</li>
+<li>Create a new environment</li>
+<li> Run the newenv.sh script, providing the base branch and the name of the new environment</li>
+<li> Create feature branches for each repo that will be affected by the feature</li>
 <li>Make changes</li>
 <li>Test changes by running puppet on a set of hosts in the new environment</li>
 <li>Repeat the previous two steps, committing as appropriate, until done</li>
